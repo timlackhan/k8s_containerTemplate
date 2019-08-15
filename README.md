@@ -1,19 +1,43 @@
 # Container Deployment on clearlinux
 
+## Basic Concepts
+
+### PV
+
+Persistent Volume, it you want to get some result data in your pod, you can use pv, which will be mounted on your pod and help you get your data. Here we choose NFS to be the mounted medium.
+
+### PVC
+
+Persistent Volume Claim, it's not enough to have pv only, you should use pvc to claim that I will use pv and after that you can combine pv with your pod.
+
+### RBAC
+
+Role Based Access Control. It controls whether your pod can get [or create...] pods [or services...] in your k8s cluster.
+
+### Service Account 
+
+Just like the group of pod belongs to.
+
+### Role
+
+It determines the rules about what action your pod can do (like kubectl get, or kubectl create..) and what kind of resources your pod can visit (like pods or services...)
+
+### Rolebinding
+
+Role determines what pod can do and rolebinding binds a certain group of pods with role via service account, because service account is just like the group of pod belongs to, you can imagine it as a label.
+
+ 
+
+## Architecture Graph
+
+
+
 ## 1. Prepare for PVC
 
 ### 1.1 Prepare for NFS
 
 1. mkdir /data/{v1,v2,v3,v4,v5} -pv
 2. vi /etc/exports
-3. exportfs -avr
-4. swupd bundle-add nfs-utils
-5. systemctl start rpcbind
-6. systemctl start nfs-mountd
-7. systemctl start nfs-utils
-8. showmount -e
-
-
 
 ```
 /data/v1 10.239.0.0/16(rw,no_root_squash,no_subtree_check)
@@ -23,7 +47,17 @@
 /data/v5 10.239.0.0/16(rw,no_root_squash,no_subtree_check)
 ```
 
+3. exportfs -avr
 
+4. swupd bundle-add nfs-utils
+
+5. systemctl start rpcbind
+
+6. systemctl start nfs-mountd
+
+7. systemctl start nfs-utils
+
+8. showmount -e
 
 ```
 Export list for v-30390-3:
