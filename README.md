@@ -328,7 +328,9 @@ spec:
 
 2. kubectl create -f mongodb.yaml -n containers
 
-3. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/pods** -n containers
+### 4.2 Check whether Role has effect on your pod
+
+1. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/pods** -n containers
 
 ```
  ...
@@ -341,7 +343,7 @@ spec:
  ...
 ```
 
-4. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/services** -n containers
+2. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/services** -n containers
 
 ```
 {
@@ -359,7 +361,7 @@ spec:
   "code": 403
 ```
 
-5. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**default/pods** -n containers
+3. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**default/pods** -n containers
 
 ```
 {
