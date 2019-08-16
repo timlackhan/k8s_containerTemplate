@@ -30,7 +30,7 @@ Role determines what pod can do and rolebinding binds a certain group of pods wi
 
 ## Architecture Graph
 
-![ContainerTemplate](https://github.com/timlackhan/k8s_containerTemplate/blob/master/ContainerTemplate.png)
+![ContainerTemplate](https://github.com/timlackhan/k8s_containerTemplate/imgs/blob/master/ContainerTemplate.png)
 
 
 
@@ -290,30 +290,34 @@ test   31h
 
 ### 4.1 Create pods
 
-1. vi ~/deployment/mongodb.yaml
+1. vi ~/deployment/nginx/nginx-rc.yaml
 
 ```
-apiVersion: apps/v1beta1
-kind: Deployment
+apiVersion: v1
+kind: ReplicationController
 metadata:
-  name: mongodb-deployment
+  name: nginx-test
+  labels:
+    name: nginx-test
 spec:
   replicas: 1
+  selector:
+    name: nginx-test
   template:
     metadata:
-      name: mongodb-deployment
       labels:
-        app: mongodb
-
+       name: nginx-test
     spec:
       serviceAccountName: foo
 
       containers:
-      - image: docker.io/mongo
-        name: mongodb
+      - name: nginx-test
+        image: docker.io/nginx
         volumeMounts:
-        - name: mongodb-data
-          mountPath: /data/db
+        - mountPath: /usr/share/nginx/html
+          name: nginx-data
+        ports:
+        - containerPort: 80
       - name: ambassador
         image: luksa/kubectl-proxy:1.6.2
       - name: main
@@ -321,29 +325,84 @@ spec:
         command: ["sleep", "9999999"]
 
       volumes:
-      - name: mongodb-data
+      - name: nginx-data
         persistentVolumeClaim:
           claimName: pvc01
 ```
 
-2. kubectl create -f mongodb.yaml -n containers
+2. kubectl create -f ~/deployment/nginx/nginx-rc.yaml -n containers
+3. kubectl get po -n containers
 
-### 4.2 Check whether Role has effect on your pod
+```
+NAME               READY   STATUS    RESTARTS   AGE
+nginx-test-stx2q   3/3     Running   0          11m
+```
 
-1. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/pods** -n containers
+### 4.2 Create Service
+
+1. vi ~/deployment/nginx/nginx-svc.yaml
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test
+  labels:
+    name: nginx-test
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30088
+  selector:
+    name: nginx-test
+```
+
+2. kubectl create -f ~/deployment/nginx/nginx-svc.yaml -n containers
+3. kubectl get svc -n containers
+
+```
+NAME         TYPE       CLUSTER-IP   EXTERNAL-IP   PORT(S)        AGE
+nginx-test   NodePort   10.96.4.21   <none>        80:30088/TCP   12m
+```
+
+### 4.3 Generate a html demo via PVC
+
+1. vi /data/v1/index.html
+
+```
+Hello, Welcome to my website...
+```
+
+### 4.4 Check whether service has effect
+
+1. visit http://10.239.85.46:30088/ on your webserver, the result should be
+
+```
+Hello, Welcome to my website...
+```
+
+### 4.5 Check whether Role has effect on your pod
+
+1. kubectl exec -it nginx-test-stx2q -c main curl localhost:8001/api/v1/namespaces/**containers/pods** -n containers
 
 ```
  ...
- "ready": true,
+            },
+            "ready": true,
             "restartCount": 0,
-            "image": "docker.io/library/mongo:latest",
-            "imageID": "docker.io/library/mongo@sha256:968de6d4e8d28de52158d7ff6744422bd94aedd375df4ea93617cd7491329850",
-            "containerID": "cri-o://03ba9a9248e7b23d0590a442a0ab44ef29bfac7bdc0b81dbb1185dee8fbdbc6e"
+            "image": "docker.io/library/nginx:latest",
+            "imageID": "docker.io/library/nginx@sha256:099019968725f0fc12c4b69b289a347ae74cc56da0f0ef56e8eb8e0134fc7911",
+            "containerID": "cri-o://e13128bf73df67a95bc58b250c7a13968a26703111487c807d94b566fc445c6b"
           }
+        ],
+        "qosClass": "BestEffort"
+      }
  ...
 ```
 
-2. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/services** -n containers
+2. kubectl exec -it nginx-test-stx2q -c main curl localhost:8001/api/v1/namespaces/**containers/services** -n containers
 
 ```
 {
@@ -361,7 +420,7 @@ spec:
   "code": 403
 ```
 
-3. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**default/pods** -n containers
+3. kubectl exec -it nginx-test-stx2q -c main curl localhost:8001/api/v1/namespaces/**default/pods** -n containers
 
 ```
 {
