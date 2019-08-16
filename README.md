@@ -30,7 +30,7 @@ Role determines what pod can do and rolebinding binds a certain group of pods wi
 
 ## Architecture Graph
 
-
+![ContainerTemplate](C:\Yi Han\materials\kubernetes\k8s_containerTemplate\k8s_containerTemplate\ContainerTemplate.png)
 
 ## 1. Prepare for PVC
 
