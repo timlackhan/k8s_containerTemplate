@@ -32,9 +32,21 @@ Role determines what pod can do and rolebinding binds a certain group of pods wi
 
 ![ContainerTemplate](https://github.com/timlackhan/k8s_containerTemplate/blob/master/ContainerTemplate.png)
 
-## 1. Prepare for PVC
 
-### 1.1 Prepare for NFS
+
+## 1. Prepare one master node and one worker node
+
+### 1.1 Create a k8s cluster on two nodes
+
+### 1.2 Create  namespace "containers" on your cluster
+
+1. kubectl create ns containers
+
+
+
+## 2. Prepare for PVC
+
+### 2.1 Prepare for NFS on master node
 
 1. mkdir /data/{v1,v2,v3,v4,v5} -pv
 2. vi /etc/exports
@@ -68,9 +80,19 @@ Export list for v-30390-3:
 /data/v1 10.239.0.0/16
 ```
 
+ps. 10.239.0.0/16 is subnetwork of VMs
 
+### 2.2 Open NFS on worker node
 
-### 1.2 Prepare for PVs
+1. swupd bundle-add nfs-utils
+
+2. systemctl start rpcbind
+
+3. systemctl start nfs-mountd
+
+4. systemctl start nfs-utils
+
+### 2.3 Prepare for PVs on master node
 
 1. vi ~/pv/pv.yaml
 
@@ -158,9 +180,7 @@ pv04   4Gi        RWO,RWX        Retain           Available                     
 pv05   5Gi        RWO,RWX        Retain           Available                                              29h
 ```
 
-
-
-### 1.3 Prepare for PVC
+### 2.4 Prepare for PVC on master node
 
 1. vi ~/pv/pvc.yaml
 
@@ -169,7 +189,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc01
-  namespace: default
+  namespace: containers
 spec:
   accessModes: ["ReadWriteMany"]
   resources:
@@ -186,7 +206,7 @@ NAMESPACE    NAME    STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS   
 containers   pvc01   Bound    pv01     1Gi        RWO,RWX                       29h
 ```
 
-3. kubectl get pv
+4. kubectl get pv
 
 ```
 NAME   CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM              STORAGECLASS   REASON   AGE
@@ -199,9 +219,9 @@ pv05   5Gi        RWO,RWX        Retain           Available                     
 
 
 
-## 2. Prepare for RBAC
+## 3. Prepare for RBAC
 
-### 2.1 Create service account
+### 3.1 Create service account
 
 1. kubectl create sa foo -n containers
 2. kubectl get sa -n containers
@@ -212,9 +232,7 @@ default   1         32h
 foo       1         32h
 ```
 
-
-
-### 2.2 Create role
+### 3.2 Create role
 
 1. vi ~/RBAC/role.yaml
 
@@ -238,9 +256,7 @@ NAME             AGE
 service-reader   32h
 ```
 
-
-
-### 2.3 Create rolebinding
+### 3.3 Create rolebinding
 
 1. vi ~/RBAC/rolebinding.yaml
 
@@ -270,9 +286,9 @@ test   31h
 
 
 
-## 3. Prepare for pods
+## 4. Prepare for pods
 
-### 3.1 Create pods
+### 4.1 Create pods
 
 1. vi ~/deployment/mongodb.yaml
 
@@ -300,6 +316,9 @@ spec:
           mountPath: /data/db
       - name: ambassador
         image: luksa/kubectl-proxy:1.6.2
+      - name: main
+        image: tutum/curl
+        command: ["sleep", "9999999"]
 
       volumes:
       - name: mongodb-data
@@ -308,3 +327,53 @@ spec:
 ```
 
 2. kubectl create -f mongodb.yaml -n containers
+
+3. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/pods** -n containers
+
+```
+ ...
+ "ready": true,
+            "restartCount": 0,
+            "image": "docker.io/library/mongo:latest",
+            "imageID": "docker.io/library/mongo@sha256:968de6d4e8d28de52158d7ff6744422bd94aedd375df4ea93617cd7491329850",
+            "containerID": "cri-o://03ba9a9248e7b23d0590a442a0ab44ef29bfac7bdc0b81dbb1185dee8fbdbc6e"
+          }
+ ...
+```
+
+4. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**containers/services** -n containers
+
+```
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+
+  },
+  "status": "Failure",
+  "message": "services is forbidden: User \"system:serviceaccount:containers:foo\" cannot list resource \"services\" in API group \"\" in the namespace \"containers\"",
+  "reason": "Forbidden",
+  "details": {
+    "kind": "services"
+  },
+  "code": 403
+```
+
+5. kubectl exec -it mongodb-deployment-9f7dccbfc-rbtzs -c main curl localhost:8001/api/v1/namespaces/**default/pods** -n containers
+
+```
+{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "metadata": {
+
+  },
+  "status": "Failure",
+  "message": "services is forbidden: User \"system:serviceaccount:containers:foo\" cannot list resource \"services\" in API group \"\" in the namespace \"containers\"",
+  "reason": "Forbidden",
+  "details": {
+    "kind": "services"
+  },
+  "code": 403
+```
+
