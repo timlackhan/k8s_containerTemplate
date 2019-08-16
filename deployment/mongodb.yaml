@@ -21,6 +21,9 @@ spec:
           mountPath: /data/db
       - name: ambassador
         image: luksa/kubectl-proxy:1.6.2
+      - name: main
+        image: tutum/curl
+        command: ["sleep", "9999999"]
 
       volumes:
       - name: mongodb-data
